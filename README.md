@@ -3,4 +3,4 @@
 
 Downloads images from artists on Newgrounds.
 
-Usage: `python3 main.py [username]`
+Usage: `python3 main.py [username] {username}...`

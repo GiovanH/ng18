@@ -11,6 +11,7 @@ from urllib.request import urlretrieve
 from os import path, makedirs
 import re
 
+
 class GalleryItem():
 
     def __init__(self, fullimage, author, imagename, thumbnail=None, suitability="unknown"):
@@ -28,6 +29,9 @@ class GalleryItem():
     def dump(self):
         for a in ["image", "author", "name", "thumbnail", "suitability", "ext"]:
             print("{}: {}".format(a, self.__getattribute__(a)))       
+
+    def preview(self):
+        print("{}: {}".format(self.author, self.name))
 
 
 def getUserPage(username, page):
@@ -98,13 +102,14 @@ def downloadAllImages(username):
     for year in user_json.get("years"):
         for item in user_json.get("years").get(year).get("items"):
             try:
-                loom.threadWait(8, 2)
+                loom.threadWait(MAX_THREADS, 2)
                 galleryItem = htmlToItem(item)
-                galleryItem.dump()
+                galleryItem.preview()
                 basepath = path.join(".", galleryItem.author)
                 makedirs(basepath, exist_ok=True)
                 filepath = path.join(basepath, galleryItem.name + galleryItem.ext)
-                loom.thread(target=lambda: urlretrieve(galleryItem.image, filename=filepath))
+                if not path.exists(filepath):
+                    loom.thread(target=lambda: urlretrieve(galleryItem.image, filename=filepath))
             except AttributeError as e:
                 traceback.print_exc()
                 jobj.save(item, "item_error_{}".format(hash(item)))
@@ -116,11 +121,16 @@ def parse_args():
     Parse args from command line and return the namespace
     """
     ap = argparse.ArgumentParser()
-    ap.add_argument("user",
-                    help="File globs that select which files to check. Globstar supported.")
+    ap.add_argument("users", nargs="+",
+                    help="Newgrounds usernames")
+    ap.add_argument("-threads", type=int, default=8,
+                    help="Maximum simultaneous threads")
     return ap.parse_args()
 
+MAX_THREADS = 8
 
 if __name__ == "__main__":
     args = parse_args()
-    downloadAllImages(args.user)
+    MAX_THREADS = args.threads
+    for user in args.users:
+        downloadAllImages(user)
